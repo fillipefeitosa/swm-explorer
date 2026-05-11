@@ -2,12 +2,23 @@ import esda
 import matplotlib.pyplot as plt
 from splot.esda import lisa_cluster
 
-def plot_lisa(gdf, w, variable: str, title: str):
-    y = gdf[variable].values
-    lisa = esda.Moran_Local(y, w)
+
+def plot_lisa(gdf, lisa: esda.Moran_Local, title: str):
+    """
+    Plots a LISA cluster map from a precomputed Moran_Local object.
+
+    Args:
+        gdf:   GeoDataFrame with geometry.
+        lisa:  A precomputed esda.Moran_Local object from analysis.py.
+        title: Title for the map.
+
+    Returns:
+        A matplotlib Figure object.
+    """
     fig, ax = lisa_cluster(lisa, gdf, p=0.05)
     ax.set_title(title)
     return fig
+
 
 def plot_swm_weighted(gdf, w, title: str):
     """
@@ -31,7 +42,7 @@ def plot_swm_weighted(gdf, w, title: str):
         for j, weight in zip(neighbors, w.weights[i]):
             # normalize weight to [0, 1] relative to the actual range in this W
             normalized = (weight - min_weight) / weight_range
-            contrast = normalized ** 2
+            contrast = normalized**2
             # I tweeked the contrast, and linewidth on purpuse
             ax.plot(
                 [cx[i], cx[j]],

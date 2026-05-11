@@ -1,12 +1,14 @@
 import logging
 import sys
+from pathlib import Path
 from swm.io import load_database
 from swm.weights import create_rook_swm, create_queen_swm
 from swm.weights import create_knn_swm, create_distance_swm
 from swm.weights import create_socio_swm
-from swm.viz import plot_swm_weighted
+from swm.viz import plot_swm_weighted, plot_lisa
+from swm.analysis import build_morans_table, compute_local_morans
+from swm.report import print_morans_table, save_morans_table
 
-# 1. SETUP CONFIGURATION
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -15,32 +17,56 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+ANALYSIS_VARIABLE = "pct_children_migration_background"
+SOCIO_INDEX = "pct_welfare_15_64"
+DISTANCE_THRESHOLD = 5000
+
 
 def main():
     logger.info("SWM Explorer. Starting Execution")
-    polygons = load_database()
-    print(polygons.head())
+    Path("reports").mkdir(exist_ok=True)
 
+    polygons = load_database()
+
+    # --- Build all W matrices ---
     rook_w = create_rook_swm(polygons)
     queen_w = create_queen_swm(polygons)
     knn_w = create_knn_swm(polygons)
-    distance_band_w = create_distance_swm(polygons, threshold=5000)
+    distance_w = create_distance_swm(polygons, threshold=DISTANCE_THRESHOLD)
+    socio_w = create_socio_swm(polygons, knn_w, index_col=SOCIO_INDEX)
 
-    logger.info("---- Starting Socioeconomic Analisys ----")
-    socioeconomic_w = create_socio_swm(polygons, knn_w, index_col="pct_welfare_15_64")
+    # --- Visualize W structures ---
+    for w, name in [
+        (rook_w, "rook"),
+        (queen_w, "queen"),
+        (distance_w, "distance"),
+        (socio_w, "socioeconomic"),
+    ]:
+        fig = plot_swm_weighted(polygons, w, title=f"{name.capitalize()} W")
+        fig.savefig(f"reports/swm_{name}.png", dpi=150, bbox_inches="tight")
 
-    # Some Viz
-    # Class 2: show the structure of each W
-    fig = plot_swm_weighted(polygons, rook_w, title="Rook W")
-    fig.savefig("reports/swm_rook.png", dpi=150, bbox_inches="tight")
+    # --- Global Moran's I comparison table ---
+    weights_dict = {
+        "Rook": rook_w,
+        "Queen": queen_w,
+        "KNN (k=4)": knn_w,
+        f"Distance Band ({DISTANCE_THRESHOLD})": distance_w,
+        "Socio-Similarity (KNN)": socio_w,
+    }
 
-    fig = plot_swm_weighted(polygons, distance_band_w, title="Distance W")
-    fig.savefig("reports/swm_distance.png", dpi=150, bbox_inches="tight")
+    table = build_morans_table(polygons, weights_dict, variable=ANALYSIS_VARIABLE)
+    print_morans_table(table, variable=ANALYSIS_VARIABLE)
+    save_morans_table(table, variable=ANALYSIS_VARIABLE)
 
-    fig = plot_swm_weighted(
-        polygons, socioeconomic_w, title="Socioeconomic W — Similarity"
-    )
-    fig.savefig("reports/swm_socio.png", dpi=150, bbox_inches="tight")
+    # --- LISA maps per W ---
+    for name, w in weights_dict.items():
+        lisa = compute_local_morans(polygons, w, variable=ANALYSIS_VARIABLE)
+        fig = plot_lisa(polygons, lisa, title=f"LISA — {name}")
+        fig.savefig(
+            f"reports/lisa_{name.replace(' ', '_').lower()}.png",
+            dpi=150,
+            bbox_inches="tight",
+        )
 
     logger.info("---- End of Execution ----")
 
