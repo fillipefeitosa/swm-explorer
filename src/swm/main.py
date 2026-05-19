@@ -5,8 +5,8 @@ from swm.io import load_database
 from swm.weights import create_rook_swm, create_queen_swm
 from swm.weights import create_knn_swm, create_distance_swm
 from swm.weights import create_socio_swm
-from swm.viz import plot_swm_weighted, plot_lisa
-from swm.analysis import build_morans_table, compute_local_morans
+from swm.viz import plot_swm_weighted
+from swm.analysis import build_morans_table
 from swm.report import print_morans_table, save_morans_table
 
 logging.basicConfig(
@@ -57,18 +57,6 @@ def main():
     table = build_morans_table(polygons, weights_dict, variable=ANALYSIS_VARIABLE)
     print_morans_table(table, variable=ANALYSIS_VARIABLE)
     save_morans_table(table, variable=ANALYSIS_VARIABLE)
-
-    # --- LISA maps per W ---
-    for name, w in weights_dict.items():
-        lisa = compute_local_morans(polygons, w, variable=ANALYSIS_VARIABLE)
-        fig = plot_lisa(polygons, lisa, title=f"LISA — {name}")
-        fig.savefig(
-            f"reports/lisa_{name.replace(' ', '_').lower()}.png",
-            dpi=150,
-            bbox_inches="tight",
-        )
-
-    logger.info("---- End of Execution ----")
 
 
 if __name__ == "__main__":

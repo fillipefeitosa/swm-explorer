@@ -52,20 +52,3 @@ def build_morans_table(gdf, weights_dict: dict, variable: str) -> pd.DataFrame:
         )
 
     return pd.DataFrame(results)
-
-
-def compute_local_morans(gdf, w, variable: str) -> esda.Moran_Local:
-    """
-    Computes Local Moran's I (LISA) for a given variable and W object.
-
-    Args:
-        gdf:      GeoDataFrame containing the variable.
-        w:        A libpysal W object.
-        variable: Column name in gdf to analyze.
-
-    Returns:
-        An esda.Moran_Local object for use in LISA cluster maps.
-    """
-    logger.info("Computing Local Moran's I — variable: %s", variable)
-    y = gdf[variable].values
-    return esda.Moran_Local(y, w)
